@@ -29,39 +29,112 @@ const getHorseData = (html: string) => {
     return hrefs;
 }
 
-const convertCodePoints = (str: string) => {
-    return Array.from(str).map((c) => c.codePointAt(0));
-}
-
 const getHorseName = (doc: HTMLDocument) => {
-    const name = doc.querySelector(".horse_title h1").innerHTML
-    console.log(name);
-    const cp = convertCodePoints(name);
-    console.log(cp);
-
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(name);
-    console.log(bytes);
-    const decorder = new TextDecoder("EUC-JP");
-
-    return decorder.decode(bytes);
+    const tag = doc.querySelector(".horse_title h1");
+    return tag.textContent;
 }
 
 const getHorsePrice = (doc: HTMLDocument) => {
-
+    const tbody = doc.querySelector(".db_prof_area_02 table tbody");
+    const tr = tbody.querySelector("tr + tr + tr + tr + tr + tr");
+    const price = tr.querySelector("td").textContent.trim();
+    return price;
 }
 
 const getHorseParents = (doc: HTMLDocument) => {
-
+    const tbody = doc.querySelector("table.blood_table tbody");
+    const ml = tbody.querySelector("tr td.b_ml");
+    const fml = tbody.querySelector("tr + tr + tr td.b_fml");
+    return {
+        "ml": {
+            "link": ml.querySelector("a").getAttribute("href"),
+            "name": ml.querySelector("a").textContent,
+        },
+        "fml": {
+            "link": fml.querySelector("a").getAttribute("href"),
+            "name": fml.querySelector("a").textContent,
+        }
+    };
 }
+
+const pickTableElement = (n: Number) => {
+    let result = "td";
+    for(let i = 0; i < n; i++) {
+        result += " + td";
+    };
+    return result;
+}
+
+interface Race {
+    name: string,
+    link: string,
+};
+interface Jockey {
+    name: string,
+    link: string,
+};
+interface Record {
+    race: Race,
+    horseNumber: number,
+    fav: number,
+    rank: number,
+    jockey: Jockey,
+    handicap: number,
+    raceLength: string,
+    raceCondition: string,
+    raceTime: string,
+    weight: string,
+};
 
 const getHorseRecords = (doc: HTMLDocument) => {
-
+    const tbody = doc.querySelector("table.db_h_race_results.nk_tb_common tbody") as Element;
+    const trs = tbody.querySelectorAll("tr") as NodeList;
+    let records = [] as Record[];
+    for(let i = 0; i < trs.length; i++) {
+        const tr = trs.item(i) as Element;
+        if(tr == null) break;
+        const race = tr.querySelector(pickTableElement(1)) as Element;
+        const horseNumber = tr.querySelector(pickTableElement(8)) as Element;
+        const fav = tr.querySelector(pickTableElement(10)) as Element;
+        const rank = tr.querySelector(pickTableElement(11)) as Element;
+        const jockey = tr.querySelector(pickTableElement(12)) as Element;
+        const handicap = tr.querySelector(pickTableElement(13)) as Element;
+        const raceLength = tr.querySelector(pickTableElement(14)) as Element;
+        const raceCondition = tr.querySelector(pickTableElement(15)) as Element;
+        const raceTime = tr.querySelector(pickTableElement(17)) as Element;
+        const weight = tr.querySelector(pickTableElement(23)) as Element;
+        const record = <Record>{
+            race: {name: race.textContent, link: race.querySelector("a").getAttribute("href")},
+            horseNumber: Number(horseNumber.textContent),
+            fav: Number(fav.textContent),
+            rank: Number(rank.textContent),
+            jockey: {name: jockey.textContent.trim(), link: jockey.querySelector("a").getAttribute("href")},
+            handicap: Number(handicap.textContent),
+            raceLength: raceLength.textContent,
+            raceCondition: raceCondition.textContent,
+            raceTime: raceTime.textContent,
+            weight: weight.textContent,
+        }
+    
+        records.push(record);
+    }
+    return records;
 }
+
+const readBlob = (blob: Blob, encode: string) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            resolve(reader.result);
+        };
+        reader.readAsText(blob, encode);
+    });
+};
 
 const getHorseInfo = async (url: string) => {
     let resp = await fetch("https://db.netkeiba.com" + url);
-    const html = await resp.text();
+    const blob = await resp.blob();
+    const html = await readBlob(blob, "euc-jp");
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
@@ -79,16 +152,21 @@ const getHorseInfo = async (url: string) => {
     };
 }
 
-const html = await fetchData();
-const horses = getHorseData(html);
+const main = async () => {
+    const html = await fetchData();
+    const horses = getHorseData(html);
+    
+    const x = horses.slice(0, 2);
+    
+    console.log(x);
+    const infos = x.map(async (v) => {
+        const a = await getHorseInfo(v);
+        console.log(a);
+        return a;
+    });
+    
+    console.log(infos);    
+}
 
-const x = horses.slice(0, 2);
+main()
 
-console.log(x);
-const infos = x.map(async (v) => {
-    const a = await getHorseInfo(v);
-    console.log(a);
-    return a;
-});
-
-console.log(infos);
