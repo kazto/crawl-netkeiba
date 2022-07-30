@@ -4,7 +4,7 @@ import {
     HTMLDocument,
 } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts";
 
-const fetchData = async () => {
+const fetchRaceTable = async () => {
     const formData = new FormData();
     [ "01", "02", "03", "04", "05", "06", "07", "08", "09", "10"].map((v) => formData.append("jyo[]", v));
     formData.append("grade[]", "8");
@@ -152,21 +152,39 @@ const getHorseInfo = async (url: string) => {
     };
 }
 
-const main = async () => {
-    const html = await fetchData();
+const getWonHorses = async () => {
+    const html = await fetchRaceTable();
     const horses = getHorseData(html);
     
     const x = horses.slice(0, 2);
     
-    console.log(x);
     const infos = x.map(async (v) => {
         const a = await getHorseInfo(v);
         console.log(a);
         return a;
     });
+
     
-    console.log(infos);    
 }
 
-main()
+const getRaces = async (html: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const links = doc.getElementsByTagName("a");
+    
+    const hrefs = links.map((v) => v.attributes
+        .getNamedItem("href").value)
+        .filter((v) => !(v.includes("/race/list/") || v.includes("/race/sum/")))
+        .filter((v) => v.includes("/race/"));
+    //hrefs.map((v) => console.log(v));
+    return hrefs;
+}
 
+const main = async () => {
+    const html = await fetchRaceTable();
+    const races = await getRaces(html);
+
+    const x = races.slice(0,2);
+
+
+}
