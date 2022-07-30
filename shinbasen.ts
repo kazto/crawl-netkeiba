@@ -131,13 +131,22 @@ const readBlob = (blob: Blob, encode: string) => {
     });
 };
 
-const getHorseInfo = async (url: string) => {
+const fetchUrl = (url: string) => {
     let resp = await fetch("https://db.netkeiba.com" + url);
     const blob = await resp.blob();
     const html = await readBlob(blob, "euc-jp");
+    return html;
+}
 
+const getDocument = (html: string) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
+    return doc;
+}
+
+const getHorseInfo = async (url: string) => {
+    const html = await fetchUrl(url);
+    const doc = getDocument(html);
 
     const horseName = getHorseName(doc);
     const horsePrice = getHorsePrice(doc);
@@ -178,6 +187,12 @@ const getRaces = async (html: string) => {
         .filter((v) => v.includes("/race/"));
     //hrefs.map((v) => console.log(v));
     return hrefs;
+}
+
+const getRaceHorses = (url: string) => {
+    const html = await fetchUrl(url);
+    const doc = getDocument(html);
+    
 }
 
 const main = async () => {
